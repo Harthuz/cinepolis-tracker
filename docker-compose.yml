@@ -1,6 +1,6 @@
 services:
   bot:
-    image: 192.168.15.10:3000/hernandes/cinepolis-bot:latest
+    build: .
     container_name: cinepolis-bot
     restart: unless-stopped
     env_file:
