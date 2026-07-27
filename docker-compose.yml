@@ -1,0 +1,10 @@
+services:
+  bot:
+    image: 192.168.15.10:3000/hernandes/cinepolis-bot:latest
+    container_name: cinepolis-bot
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      # Volume para manter o cache da sessão e evitar ter que logar novamente
+      - ./session:/app/session

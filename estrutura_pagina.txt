@@ -1,0 +1,66 @@
+=== ESTRUTURA SIMPLIFICADA DA PÁGINA ESQUELETO ===
+URL Escaneada: https://www.cinepolis.com.br/filmes/1000046469-a-odisseia-imax/
+Título da Página: Informações e sessões para A Odisseia IMAX — Cinépolis
+==================================================
+Elementos de interesse detectados (61):
+- [A] Classes: .css-okjzy | 
+- [A] Classes: .css-okjzy | 
+- [A] Classes: .css-okjzy | 
+- [A] Classes: .css-okjzy | 
+- [A] Classes: .css-okjzy | 
+- [A] Classes: .css-okjzy | 
+- [BUTTON] Classes: .css-stin2l | Texto: 'SEU CINEMA: POR FAVOR, SELECIONE UMA LOCALIDADE'
+- [BUTTON] Classes: .css-tla9aj | Texto: 'Iniciar Sessão'
+- [A] Classes: ..css-198xx4b | Texto: 'Saiba mais'
+- [A] Classes: ..css-86yb2p | 
+- [BUTTON] Classes: .css-tla9aj | Texto: 'Iniciar Sessão'
+- [A] Classes: ..css-198xx4b | Texto: 'Saiba mais'
+- [INPUT] ID: #main-menu | Classes: .css-hu9twq | 
+- [A] Classes: ..css-s6srre | Texto: 'Programação'
+- [BUTTON] Classes: .css-1lb2lyj | Texto: 'Bomboniére'
+- [BUTTON] Classes: .css-1lb2lyj | Texto: 'Salas Especiais'
+- [BUTTON] Classes: .css-1lb2lyj | Texto: 'Serviços'
+- [BUTTON] Classes: .css-1lb2lyj | Texto: 'Promoções'
+- [BUTTON] Classes: .css-1lb2lyj | Texto: 'Dúvidas?'
+- [BUTTON] Classes: .css-tla9aj | Texto: 'Iniciar Sessão'
+- [A] Classes: ..css-198xx4b | Texto: 'Saiba mais'
+- [BUTTON] Classes: .css-j93d3v | Texto: 'EM: POR FAVOR, SELECIONE UMA LOCALIDADE'
+- [BUTTON] Classes: .css-xylfv8 | Texto: 'SEG. 20'
+- [BUTTON] Classes: .css-xylfv8 | Texto: 'TER. 21'
+- [BUTTON] Classes: .css-xylfv8 | Texto: 'QUA. 22'
+- [BUTTON] Classes: .css-xylfv8 | Texto: 'QUI. 23'
+- [BUTTON] Classes: .css-xylfv8 | Texto: 'SEX. 24'
+- [BUTTON] Classes: .css-xylfv8 | Texto: 'SÁB. 25'
+- [BUTTON] Classes: .css-xylfv8 | Texto: 'DOM. 26'
+- [BUTTON] Classes: .css-xylfv8 | Texto: 'SEG. 27'
+- [BUTTON] Classes: .css-xylfv8 | Texto: 'TER. 28'
+- [BUTTON] Classes: .css-xylfv8 | Texto: 'QUA. 29'
+- [BUTTON] Classes: .css-xylfv8 | Texto: 'QUI. 30'
+- [BUTTON] Classes: .css-xylfv8 | Texto: 'SEX. 31'
+- [BUTTON] Classes: .css-poyuut | 
+- [A] Classes: ..css-koxtyw | Texto: '• Termos e Condições'
+- [A] Classes: ..css-koxtyw | Texto: '• Leis da meia entrada'
+- [A] Classes: ..css-koxtyw | Texto: '• Classificação Indicativa'
+- [A] Classes: ..css-koxtyw | Texto: '• Regulamento de Cortesia e Gratuidade'
+- [A] Classes: ..css-koxtyw | Texto: '• Regulamento Santander'
+- [A] Classes: ..css-koxtyw | Texto: '• Troca e Cancelamento'
+- [A] Classes: .css-1xzikfs | Texto: '• Código Global de Integridade'
+- [A] Classes: ..css-koxtyw | Texto: '• Política de Governança e Proteção de Dados Pessoais'
+- [A] Classes: ..css-koxtyw | Texto: '• Acessibilidade'
+- [A] Classes: ..css-koxtyw | Texto: '• FAQ'
+- [A] Classes: ..css-koxtyw | Texto: '• Sobre nós'
+- [A] Classes: ..css-koxtyw | Texto: '• Anuncie'
+- [A] Classes: ..css-koxtyw | Texto: '• Produtos e Serviços'
+- [A] Classes: ..css-koxtyw | Texto: '• Complexos'
+- [A] Classes: ..css-koxtyw | Texto: '• Club Cinépolis'
+- [A] Classes: ..css-koxtyw | Texto: '• Fale Conosco'
+- [A] Classes: .css-1xzikfs | Texto: '• Trabalhe Conosco'
+- [A] Classes: ..css-koxtyw | Texto: '• Eventos Corporativos'
+- [A] Classes: ..css-koxtyw | Texto: 'Configurações de privacidade'
+- [A] Classes: .css-okjzy | 
+- [A] Classes: .css-okjzy | 
+- [A] Classes: .css-okjzy | 
+- [A] Classes: .css-okjzy | 
+- [A] Classes: .css-okjzy | 
+- [A] Classes: .css-okjzy | 
+- [A] Classes: .css-1kyv96q | 
