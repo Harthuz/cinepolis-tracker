@@ -20,14 +20,13 @@ def tentar_fechar_cookies(page):
         if btn_cookie.count() > 0 and btn_cookie.first.is_visible():
             btn_cookie.first.click(force=True)
             page.wait_for_timeout(1000)
-            print("🍪 [DEBUG] Modal de cookies fechado com sucesso.")
+            print("🍪 [DEBUG] Modal de cookies fechado.")
     except Exception:
         pass
 
 def garantir_selecao_cinema(page):
-    """Verifica se há solicitação para selecionar localidade e seleciona o CINEMA_ALVO."""
+    """Verifica se a localidade precisa ser definida na página e seleciona o CINEMA_ALVO."""
     try:
-        # Checa se o cinema já está selecionado
         body_text = page.inner_text("body")
         if CINEMA_ALVO.lower() in body_text.lower():
             print(f"📍 [DEBUG] Cinema '{CINEMA_ALVO}' já está ativo na página.")
@@ -39,12 +38,11 @@ def garantir_selecao_cinema(page):
             sel_local.click(force=True)
             page.wait_for_timeout(1500)
             
-            # Clica na opção do cinema (ex: Cinépolis JK Iguatemi (SP))
             op_cinema = page.locator(f"text={CINEMA_ALVO}").first
             if op_cinema.count() > 0 and op_cinema.is_visible():
                 op_cinema.click(force=True)
                 page.wait_for_timeout(3000)
-                print(f"✅ [DEBUG] Cinema '{CINEMA_ALVO}' selecionado com sucesso!")
+                print(f"✅ [DEBUG] Cinema '{CINEMA_ALVO}' selecionado!")
             else:
                 op_alt = page.locator("text=JK Iguatemi").first
                 if op_alt.count() > 0 and op_alt.is_visible():
@@ -52,41 +50,17 @@ def garantir_selecao_cinema(page):
                     page.wait_for_timeout(3000)
                     print("✅ [DEBUG] Cinema 'JK Iguatemi' selecionado!")
     except Exception as e:
-        print(f"⚠️ [DEBUG] Erro ao tentar selecionar o cinema: {e}")
-
-def garantir_selecao_data(page, data_str):
-    """Tenta localizar e clicar no dia correspondente no carrossel de datas para expandir as sessões."""
-    try:
-        # Extrai o dia (ex: "12" de "2026-08-12" ou "12/08/2026")
-        match = re.search(r'\b(\d{1,2})\b', data_str)
-        dia_alvo = str(int(match.group(1))) if match else ""
-        
-        if not dia_alvo:
-            return
-
-        # Procura botões/elementos do carrossel que contenham o dia alvo
-        dias_el = page.locator(f"text={dia_alvo}")
-        for i in range(dias_el.count()):
-            el = dias_el.nth(i)
-            if el.is_visible():
-                txt = el.inner_text().strip()
-                if txt == dia_alvo:
-                    print(f"📅 [DEBUG] Clicando no dia {dia_alvo} no carrossel de datas...")
-                    el.click(force=True)
-                    page.wait_for_timeout(2000)
-                    break
-    except Exception as e:
-        print(f"⚠️ [DEBUG] Erro ao selecionar o dia no carrossel: {e}")
+        print(f"⚠️ [DEBUG] Erro ao selecionar cinema: {e}")
 
 def verificar_e_monitorar(headless=True):
-    """Roda a verificação periódica acessando a URL com o parâmetro date=?YYYY-MM-DD,
-    garantindo a seleção do cinema e executando reload no navegador a cada ciclo.
+    """Roda o monitoramento periódico acessando exclusivamente a URL parametrizada por data (?date=YYYY-MM-DD)
+    e executando reload no navegador a cada ciclo.
     """
     data_formatada = formatar_data_yyyy_mm_dd(DATA_ALVO)
     url_com_data = obter_url_com_data(URL_ALVO, DATA_ALVO)
     
     print(f"🚀 Iniciando monitoramento periódico a cada {INTERVALO_MINUTOS} minutos...")
-    print(f"URL Alvo com parâmetro: {url_com_data}")
+    print(f"URL Alvo: {url_com_data}")
     print(f"Cinema Alvo: {CINEMA_ALVO}")
     print(f"Data Alvo procurada: {data_formatada}")
     print(f"Modo de Execução: {'Visível' if not headless else 'Oculto (Headless)'}")
@@ -115,7 +89,7 @@ def verificar_e_monitorar(headless=True):
         try:
             while True:
                 timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
-                print(f"\n[{timestamp}] Checando sessões para {CINEMA_ALVO} na data {data_formatada}...")
+                print(f"\n[{timestamp}] Checando sessões via URL para {CINEMA_ALVO} na data {data_formatada}...")
                 
                 try:
                     if page is None or page.is_closed():
@@ -133,7 +107,6 @@ def verificar_e_monitorar(headless=True):
                     page.wait_for_timeout(3000)
                     tentar_fechar_cookies(page)
                     garantir_selecao_cinema(page)
-                    garantir_selecao_data(page, data_formatada)
                     
                     if site_indisponivel:
                         print("🎉 O site voltou a ficar disponível!")
@@ -145,29 +118,20 @@ def verificar_e_monitorar(headless=True):
                         )
                         site_indisponivel = False
                     
-                    # Salva screenshot para debug visual no container/máquina
+                    # Salva screenshot para debug visual da página carregada pela URL
                     screenshot_path = os.path.join(SESSION_DIR, "debug_last.png")
                     try:
                         page.screenshot(path=screenshot_path)
-                        print(f"📸 [DEBUG] Screenshot salvo em: {screenshot_path}")
+                        print(f"📸 [DEBUG] Screenshot da página salva em: {screenshot_path}")
                     except Exception:
                         pass
 
-                    # Análise do conteúdo da página
+                    # Análise do conteúdo retornado diretamente pela URL
                     body_text = page.inner_text("body")
-                    lines = [line.strip() for line in body_text.split('\n') if line.strip()]
                     
-                    print("\n--- [DEBUG LOG] AMATRA DE CONTEÚDO CAPTURADO DA PÁGINA ---")
-                    for l in lines:
-                        if any(k in l.lower() for k in ['cinema', 'legendado', 'dublado', 'sess', 'quarta', '12', '14:', '18:', '22:', 'horário']):
-                            print("  [PAGE LOG] >", l[:120])
-                    print("--- [DEBUG LOG] FIM DA AMOSTRA ---\n")
-                    
-                    # Busca por horários de exibição (ex: 14:30, 18:15, 22:00)
+                    # Extração dos horários de exibição (ex: 14:30, 18:15, 22:00)
                     horarios_encontrados = re.findall(r'\b(?:[01]?\d|2[0-3]):[0-5]\d\b', body_text)
                     horarios_validos = sorted(list(set([h for h in horarios_encontrados if h != "00:00"])))
-                    
-                    print(f"🔎 [DEBUG] Horários potenciais detectados: {horarios_validos}")
                     
                     tem_aviso_sem_sessao = ("não há sessões" in body_text.lower() or 
                                            "nao ha sessoes" in body_text.lower() or 
@@ -177,8 +141,8 @@ def verificar_e_monitorar(headless=True):
                     tem_sessao_disponivel = len(horarios_validos) > 0 and not tem_aviso_sem_sessao
                     
                     if tem_sessao_disponivel:
-                        print(f"🎯 SUCESSO: Foram encontradas sessões disponíveis no {CINEMA_ALVO} para {data_formatada}!")
-                        print(f"🕒 Horários disponíveis encontrados: {', '.join(horarios_validos)}")
+                        print(f"🎯 SUCESSO: Foram encontradas sessões disponíveis no {CINEMA_ALVO} para a data {data_formatada}!")
+                        print(f"🕒 Horários encontrados: {', '.join(horarios_validos)}")
                             
                         if not alerta_enviado:
                             resend_ok = enviar_notificacao(data_formatada, horarios_validos)
@@ -189,7 +153,10 @@ def verificar_e_monitorar(headless=True):
                             )
                             alerta_enviado = resend_ok or pushover_ok
                     else:
-                        print(f"ℹ️ Data ({data_formatada}) no {CINEMA_ALVO} verificada, porém ainda NÃO há sessões disponíveis no momento.")
+                        if "selecione um cinema para ver as sessões" in body_text.lower():
+                            print(f"ℹ️ A URL foi carregada, porém aguarda a seleção da localidade na sessão.")
+                        else:
+                            print(f"ℹ️ Data ({data_formatada}) acessada via URL no {CINEMA_ALVO}, porém ainda NÃO há sessões disponíveis.")
                             
                 except Exception as e:
                     erro_msg = str(e)
