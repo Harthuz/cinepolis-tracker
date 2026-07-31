@@ -8,6 +8,8 @@ from src.config import (
     CINEMA_ALVO,
     INTERVALO_MINUTOS,
     SESSION_DIR,
+    RESEND_API_KEY,
+    EMAIL_DESTINO,
     obter_url_com_data,
     formatar_data_yyyy_mm_dd
 )
@@ -73,9 +75,19 @@ def garantir_selecao_cinema(page):
         print(f"⚠️ [DEBUG] Erro ao verificar/selecionar localidade: {e}")
         return False
 
+def limpar_cache_sessao(context, page):
+    """Limpa cookies, localStorage e sessionStorage do navegador antes de recarregar."""
+    try:
+        context.clear_cookies()
+        if page and not page.is_closed():
+            page.evaluate("() => { try { localStorage.clear(); sessionStorage.clear(); } catch(e){} }")
+        print("🧹 [DEBUG] Cache de sessão, cookies e localStorage limpos com sucesso.")
+    except Exception as e:
+        print(f"⚠️ [DEBUG] Erro ao limpar cache de sessão: {e}")
+
 def verificar_e_monitorar(headless=True):
-    """Roda o monitoramento periódico acessando exclusivamente a URL parametrizada por data (?date=YYYY-MM-DD)
-    e executando reload no navegador a cada ciclo.
+    """Roda o monitoramento periódico acessando exclusivamente a URL parametrizada por data (?date=YYYY-MM-DD),
+    limpando o cache de sessão e executando reload no navegador a cada ciclo.
     """
     data_formatada = formatar_data_yyyy_mm_dd(DATA_ALVO)
     url_com_data = obter_url_com_data(URL_ALVO, DATA_ALVO)
@@ -110,17 +122,18 @@ def verificar_e_monitorar(headless=True):
         try:
             while True:
                 timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
-                print(f"\n[{timestamp}] Checando sessões via URL para {CINEMA_ALVO} na data {data_formatada}...")
+                print(f"\n[{timestamp}] Checando sessões via URL limpa para {CINEMA_ALVO} na data {data_formatada}...")
                 
                 try:
                     if page is None or page.is_closed():
-                        print(f"🌐 Navegando para: {url_com_data}")
                         page = context.new_page()
                         page.add_init_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
-                        response = page.goto(url_com_data, timeout=60000, wait_until="domcontentloaded")
                     else:
-                        print("🔄 Recarregando a página no navegador (Reload)...")
-                        response = page.reload(timeout=60000, wait_until="domcontentloaded")
+                        # Limpa cookies, localStorage e sessionStorage antes do próximo reload
+                        limpar_cache_sessao(context, page)
+
+                    print(f"🌐 Navegando para a página limpa: {url_com_data}")
+                    response = page.goto(url_com_data, timeout=60000, wait_until="domcontentloaded")
                         
                     if response is None or not response.ok:
                         status = response.status if response else "Sem Resposta/Timeout"
@@ -172,7 +185,6 @@ def verificar_e_monitorar(headless=True):
                                 mensagem=f"Sessões encontradas ({', '.join(horarios_validos)}) para {data_formatada}! Acesse: {url_com_data}",
                                 priority=2
                             )
-                            # Chama o Resend apenas se a chave estiver configurada
                             if RESEND_API_KEY and EMAIL_DESTINO:
                                 enviar_notificacao(data_formatada, horarios_validos)
                             alerta_enviado = pushover_ok
