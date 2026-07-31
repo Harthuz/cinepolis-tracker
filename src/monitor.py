@@ -29,12 +29,17 @@ def garantir_selecao_cinema(page):
     try:
         body_text = page.inner_text("body")
         
-        # Se o cinema alvo já está ativo e a mensagem de escolher localidade não existe mais
+        # Detecta se ocorreu bloqueio do Cloudflare
+        if "sorry, you have been blocked" in body_text.lower() or "cloudflare" in body_text.lower():
+            print("⚠️ [CLOUDFLARE] A página foi temporariamente retida pela proteção do Cloudflare. Recarregando...")
+            return False
+
+        # Se o cinema alvo já está ativo e confirmado no cabeçalho/corpo da página
         if CINEMA_ALVO.lower() in body_text.lower() and "selecione um cinema para ver as sessões" not in body_text.lower():
-            print(f"📍 [DEBUG] Cinema '{CINEMA_ALVO}' já está ativado e confirmado na página.")
+            print(f"📍 [DEBUG] Cinema '{CINEMA_ALVO}' confirmado como ativo na página!")
             return True
 
-        print(f"📍 [DEBUG] Aplicando a seleção da localidade para '{CINEMA_ALVO}'...")
+        print(f"📍 [DEBUG] Aplicando a seleção de localidade para '{CINEMA_ALVO}'...")
         
         # Procura o botão para abrir a seleção de localidade
         sel_local = page.locator("text=POR FAVOR, SELECIONE UMA LOCALIDADE, text=SELECIONE UMA LOCALIDADE, text=SEU CINEMA").first
@@ -48,20 +53,20 @@ def garantir_selecao_cinema(page):
                 input_search.fill("JK Iguatemi")
                 page.wait_for_timeout(1000)
                 
-            # Clica no item correspondente ao cinema na lista
-            op_cinema = page.locator("text=Cinépolis JK Iguatemi (SP), text=JK Iguatemi, text=Cinépolis JK Iguatemi").first
+            # Clica na opção correspondente ao cinema
+            op_cinema = page.get_by_text("JK Iguatemi", exact=False).first
             if op_cinema.count() > 0 and op_cinema.is_visible():
                 op_cinema.click(force=True)
                 page.wait_for_timeout(4000)
                 print(f"✅ [DEBUG] Clique em '{CINEMA_ALVO}' efetuado!")
                 
-        # Confirmação pós-seleção
+        # Re-confirmação
         body_after = page.inner_text("body")
         if CINEMA_ALVO.lower() in body_after.lower() and "selecione um cinema para ver as sessões" not in body_after.lower():
-            print(f"✅ [DEBUG] Sucesso: Localidade '{CINEMA_ALVO}' ativada na página!")
+            print(f"✅ [DEBUG] Localidade '{CINEMA_ALVO}' ativada com sucesso!")
             return True
         else:
-            print(f"⚠️ [DEBUG] Atenção: A seleção de '{CINEMA_ALVO}' foi tentada, aguardando carregamento dos componentes.")
+            print(f"⚠️ [DEBUG] Aguardando confirmação dos componentes da localidade '{CINEMA_ALVO}'.")
             return False
 
     except Exception as e:
@@ -90,8 +95,8 @@ def verificar_e_monitorar(headless=True):
         context = p.chromium.launch_persistent_context(
             user_data_dir=SESSION_DIR,
             headless=headless,
-            viewport={'width': 1280, 'height': 800},
-            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+            viewport={'width': 1366, 'height': 768},
+            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
             ignore_default_args=["--enable-automation"],
             args=[
                 "--no-sandbox",
@@ -111,6 +116,7 @@ def verificar_e_monitorar(headless=True):
                     if page is None or page.is_closed():
                         print(f"🌐 Navegando para: {url_com_data}")
                         page = context.new_page()
+                        page.add_init_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
                         response = page.goto(url_com_data, timeout=60000, wait_until="domcontentloaded")
                     else:
                         print("🔄 Recarregando a página no navegador (Reload)...")
@@ -169,7 +175,9 @@ def verificar_e_monitorar(headless=True):
                             resend_ok = enviar_notificacao(data_formatada, horarios_validos)
                             alerta_enviado = pushover_ok or resend_ok
                     else:
-                        if "selecione um cinema para ver as sessões" in body_text.lower():
+                        if "sorry, you have been blocked" in body_text.lower() or "cloudflare" in body_text.lower():
+                            print("⚠️ [CLOUDFLARE] O acesso foi retido pela tela de segurança do Cloudflare. Recarregando no próximo ciclo...")
+                        elif "selecione um cinema para ver as sessões" in body_text.lower():
                             print(f"ℹ️ A URL foi carregada, porém a localidade ainda aguarda confirmação de carregamento.")
                         else:
                             print(f"ℹ️ Data ({data_formatada}) acessada via URL no {CINEMA_ALVO}, porém ainda NÃO há sessões disponíveis.")
