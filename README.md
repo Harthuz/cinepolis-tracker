@@ -1,23 +1,53 @@
-# Bot de Monitoramento de Ingressos
+# Bot de Monitoramento de Ingressos (Cinépolis Tracker)
 
-Este projeto é um bot automatizado que monitora sites de venda de ingressos em busca de disponibilidade de uma data específica. Ele utiliza Playwright para navegar no site e extrair informações, notificando você via Resend (e-mail) ou Pushover (notificação celular) quando o ingresso estiver disponível.
+Este projeto é um bot automatizado que monitora sites de venda de ingressos (como a Cinépolis) em busca da disponibilidade de sessões para uma data e cinema específicos. Ele utiliza o **Playwright** para navegar de forma reativa no site, aceitar cookies, selecionar a localidade do cinema e verificar os horários das sessões, notificando você via **Resend** (e-mail) ou **Pushover** (notificação de emergência no celular) assim que os ingressos forem liberados.
 
-## 📋 Pré-requisitos
+---
 
-* Python 3.9+ ou Docker instalado.
+## 🚀 Funcionalidades e Processo de Verificação por URL e Data
+
+- **Parametrização por Data Alvo na URL**: O bot monta automaticamente a URL da página do filme contendo o parâmetro `?date=YYYY-MM-DD` (ex: `https://www.cinepolis.com.br/filmes/1000046469-a-odisseia-imax/?date=2026-08-12`).
+- **Seleção Automática do Cinema Alvo**: Ao carregar a página, o bot detecta se a localidade precisa ser definida e seleciona automaticamente o complexo configurado (ex: `Cinépolis JK Iguatemi (SP)`).
+- **Reload Periódico do Navegador**: A cada ciclo de monitoramento (`INTERVALO_MINUTOS`), o bot executa um `page.reload()` no navegador mantendo os cookies e a sessão para verificar a abertura dos horários (ex: `14:30`, `18:15`, `22:00`).
+- **Tratamento Automático de Cookies/LGPD**: Fecha automaticamente o modal de consentimento de privacidade.
+- **Alertas Imediatos**: Envia notificações instantâneas com a lista dos horários encontrados assim que a sessão fica disponível.
+
+---
 
 ## ⚙️ Configuração
 
 1. Clone o repositório e acesse a pasta do projeto.
-2. Crie um arquivo `.env` na raiz do projeto copiando o arquivo de exemplo fornecido:
+2. Crie o arquivo `.env` baseado no exemplo `.env.example`:
    ```bash
    cp .env.example .env
    ```
-3. Edite o arquivo `.env` e configure suas variáveis de ambiente, como por exemplo:
-   - `URL_ALVO`: Link direto da página de ingressos.
-   - `DATA_ALVO`: A data que você quer monitorar (ex: 20/07/2026).
-   - `INTERVALO_MINUTOS`: O tempo de espera entre cada checagem.
-   - Notificações: Configure as chaves de API do Resend e/ou Pushover.
+3. Configure suas variáveis no `.env`:
+   - `URL_ALVO`: Link direto do filme (ex: `https://www.cinepolis.com.br/filmes/1000046469-a-odisseia-imax/`).
+   - `DATA_ALVO`: Data alvo a ser monitorada no formato `YYYY-MM-DD` ou `DD/MM/YYYY` (ex: `2026-08-12`).
+   - `CINEMA_ALVO`: Nome da localidade/cinema alvo (padrão: `Cinépolis JK Iguatemi (SP)`).
+   - `INTERVALO_MINUTOS`: Tempo de espera entre cada reload (padrão: `5` minutos).
+   - `RESEND_API_KEY`, `EMAIL_DESTINO`: Para notificações por e-mail via Resend.
+   - `PUSHOVER_API_TOKEN`, `PUSHOVER_USER_KEY`: Para alertas persistentes no celular via Pushover.
+
+---
+
+## 🧪 Processo de Teste de URLs e Validação
+
+Você pode validar a verificação das URLs e sessões para datas específicas diretamente com os comandos abaixo:
+
+### Testar a verificação de data e seleção de cinema:
+O bot acessará a URL formatada com `?date=YYYY-MM-DD`, fechará o banner de cookies e garantirá a seleção do **Cinépolis JK Iguatemi (SP)**.
+
+```bash
+# Executa o monitoramento uma vez ou periodicamente
+python bot.py --visible
+```
+
+Se a data monitorada (ex: `2026-08-12`) tiver sessões abertas, o terminal exibirá:
+```text
+🎯 SUCESSO: Foram encontradas sessões disponíveis no Cinépolis JK Iguatemi (SP) para 2026-08-12!
+🕒 Horários disponíveis encontrados: 14:30, 18:15, 22:00
+```
 
 ---
 
@@ -25,43 +55,34 @@ Este projeto é um bot automatizado que monitora sites de venda de ingressos em 
 
 ### 1. Instalar as Dependências
 
-Primeiro, crie um ambiente virtual (recomendado) e instale as bibliotecas necessárias:
-
 ```bash
+# Criando ambiente virtual (opcional)
 python -m venv venv
-
-# Ativando o ambiente virtual:
-# No Windows:
 venv\Scripts\activate
-# No Linux/Mac:
-source venv/bin/activate
 
-# Instalando as bibliotecas
+# Instalando as dependências
 pip install -r requirements.txt
 
-# Instalando o navegador do Playwright
+# Instalando os navegadores do Playwright
 playwright install chromium
 ```
 
-### 2. Escaneamento Inicial e Login (Importante na 1ª vez)
+### 2. Escaneamento Inicial e Login (Modo --scan)
 
-A primeira execução deve ser feita no modo `--scan` para gerar a sessão (se o site exigir login) e escanear a página:
+A primeira execução pode ser feita com `--scan` para visualizar o navegador e gerar os cookies de sessão:
 
 ```bash
 python bot.py --scan
 ```
 
-Siga as instruções exibidas no terminal. O navegador abrirá a página alvo para que você faça o login e a navegação inicial. Após chegar à página correta, pressione `Enter` no terminal. O bot salvará a sessão (cookies) localmente na pasta `session`.
-
 ### 3. Executar o Monitoramento
 
-Após realizar o escaneamento inicial, você já pode iniciar o bot para ficar monitorando periodicamente em segundo plano (Headless):
-
+Para rodar em segundo plano (Headless):
 ```bash
 python bot.py
 ```
 
-*Nota: Se preferir ver a tela do navegador executando a cada checagem, utilize a flag `--visible`:*
+Para visualizar a janela do navegador em cada reload:
 ```bash
 python bot.py --visible
 ```
@@ -72,32 +93,28 @@ python bot.py --visible
 
 ### 1. Construir a Imagem do Docker
 
-Após ajustar seu `.env` e ter feito o seu primeiro login e escaneamento gerando a pasta `session` na sua máquina local (passo 2 acima), construa a imagem do Docker com o comando:
-
 ```bash
-docker build -t bot-ingressos .
+docker build -t harthuz/cinepolis-tracker .
 ```
 
 ### 2. Executar o Container
 
-Para rodar o bot isoladamente dentro do Docker, utilize o comando abaixo. Ele passará o seu arquivo `.env` e fará um link da sua pasta `session` local para dentro do container, mantendo o seu acesso ao site:
-
 ```bash
-docker run -d --name bot-ingressos -v "%cd%\session:/app/session" --env-file .env bot-ingressos
+docker run -d --name cinepolis-tracker -v "%cd%\session:/app/session" --env-file .env harthuz/cinepolis-tracker
 ```
-*(Nota: No Windows, utilizamos `%cd%` ou `${PWD}` no PowerShell. No Linux/Mac utilize `$(pwd)` no lugar).*
+*(No Linux/Mac utilize `$(pwd)` no lugar de `%cd%`).*
 
 ### Comandos Úteis do Docker:
 
-* **Visualizar os logs de execução do bot em tempo real:**
+* **Visualizar logs em tempo real:**
   ```bash
-  docker logs -f bot-ingressos
+  docker logs -f cinepolis-tracker
   ```
-* **Parar o monitoramento:**
+* **Parar o container:**
   ```bash
-  docker stop bot-ingressos
+  docker stop cinepolis-tracker
   ```
-* **Reiniciar o monitoramento:**
+* **Reiniciar o container:**
   ```bash
-  docker start bot-ingressos
+  docker start cinepolis-tracker
   ```
