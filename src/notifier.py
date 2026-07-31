@@ -40,38 +40,46 @@ def enviar_notificacao(data_desejada, datas_disponiveis):
         print(f"❌ Erro ao enviar e-mail via Resend: {e}")
         return False
 
+import time
+
 def enviar_notificacao_pushover(titulo, mensagem, priority=0, sound="pushover"):
-    """Envia uma notificação para o celular via Pushover."""
+    """Envia uma notificação para o celular via Pushover com retentativas em caso de falha de rede/DNS."""
     if not PUSHOVER_API_TOKEN or not PUSHOVER_USER_KEY:
         print("⚠️ Configurações do Pushover ausentes no arquivo .env. Não foi possível enviar a notificação.")
         return False
         
-    try:
-        url = "https://api.pushover.net/1/messages.json"
+    url = "https://api.pushover.net/1/messages.json"
+    
+    payload = {
+        "token": PUSHOVER_API_TOKEN,
+        "user": PUSHOVER_USER_KEY,
+        "title": titulo,
+        "message": mensagem,
+        "priority": priority,
+        "sound": sound
+    }
+    
+    # Parâmetros adicionais para Prioridade de Emergência (priority=2):
+    if priority == 2:
+        payload["retry"] = 30
+        payload["expire"] = 3600
+        payload["sound"] = "persistent" # Toca som de alarme persistente
         
-        payload = {
-            "token": PUSHOVER_API_TOKEN,
-            "user": PUSHOVER_USER_KEY,
-            "title": titulo,
-            "message": mensagem,
-            "priority": priority,
-            "sound": sound
-        }
-        
-        # Parâmetros adicionais para Prioridade de Emergência (priority=2):
-        if priority == 2:
-            payload["retry"] = 30
-            payload["expire"] = 3600
-            payload["sound"] = "persistent" # Toca som de alarme persistente
-            
-        data = urllib.parse.urlencode(payload).encode("utf-8")
-        
-        req = urllib.request.Request(url, data=data)
-        with urllib.request.urlopen(req) as response:
-            res_body = response.read().decode("utf-8")
-            print(f"🔊 Notificação do Pushover enviada! Resposta: {res_body}")
-            return True
-            
-    except Exception as e:
-        print(f"❌ Erro ao enviar notificação via Pushover: {e}")
-        return False
+    data = urllib.parse.urlencode(payload).encode("utf-8")
+    
+    # Tenta até 3 vezes em caso de oscilação temporária de DNS ou rede
+    max_tentativas = 3
+    for tentativa in range(1, max_tentativas + 1):
+        try:
+            req = urllib.request.Request(url, data=data)
+            with urllib.request.urlopen(req, timeout=15) as response:
+                res_body = response.read().decode("utf-8")
+                print(f"🔊 Notificação do Pushover enviada! Resposta: {res_body}")
+                return True
+        except Exception as e:
+            print(f"⚠️ [Tentativa {tentativa}/{max_tentativas}] Falha temporária no envio Pushover: {e}")
+            if tentativa < max_tentativas:
+                time.sleep(2)
+            else:
+                print(f"❌ Erro final ao enviar notificação via Pushover: {e}")
+                return False
