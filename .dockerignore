@@ -1,0 +1,14 @@
+.git
+.gitignore
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+session/
+.env
+*.html
+*.png
+*.log
+!requirements.txt
+scratch/
+test_*.py

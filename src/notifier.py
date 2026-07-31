@@ -1,7 +1,7 @@
 import urllib.request
 import urllib.parse
 import resend
-from config import (
+from src.config import (
     URL_ALVO,
     RESEND_API_KEY,
     EMAIL_REMETENTE,

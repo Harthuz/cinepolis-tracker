@@ -1,14 +1,15 @@
 import os
 from playwright.sync_api import sync_playwright
-from src.config import URL_ALVO, SESSION_DIR
+from src.config import URL_ALVO, DATA_ALVO, SESSION_DIR, obter_url_com_data
 
 def realizar_scan_e_login():
     """Abre o navegador de forma visível, permite que o usuário faça o login,
     navegue até a tela final de ingressos, e escaneia a estrutura do DOM ao receber confirmação.
     """
+    url_com_data = obter_url_com_data(URL_ALVO, DATA_ALVO)
     print("🔑 Iniciando modo de Login e Escaneamento da Estrutura da Página...")
-    print(f"1. O navegador se abrirá em modo visível apontando para: {URL_ALVO}")
-    print("2. Faça o login e navegue até a tela exata dos ingressos que deseja monitorar.")
+    print(f"1. O navegador se abrirá em modo visível apontando para: {url_com_data}")
+    print("2. Faça o login e selecione a sua localidade/cinema se necessário.")
     print("3. Quando chegar na página final, volte a este terminal e pressione [Enter] para escanear a página.")
     print("--------------------------------------------------------------------------------------------------")
     
@@ -28,7 +29,7 @@ def realizar_scan_e_login():
         )
         
         page = context.new_page()
-        page.goto(URL_ALVO)
+        page.goto(url_com_data)
         
         # Aguarda a confirmação do usuário que já está na tela certa
         input("\nPressione [Enter] AQUI no terminal quando estiver na página final para escanear a estrutura...")

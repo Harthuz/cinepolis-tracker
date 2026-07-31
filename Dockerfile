@@ -9,11 +9,8 @@ RUN apt-get update && apt-get install -y tzdata && rm -rf /var/lib/apt/lists/*
 # Copia os arquivos de dependência
 COPY requirements.txt .
 
-# Instala as dependências Python
+# Instala as dependências Python (a imagem base já possui o Playwright e os navegadores nativos)
 RUN pip install --no-cache-dir -r requirements.txt
-
-# Garante que a versão correta do Chromium seja baixada para o container
-RUN python -m playwright install chromium
 
 # Copia o código do bot e os módulos para dentro do container
 COPY bot.py .

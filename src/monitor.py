@@ -3,18 +3,62 @@ import re
 from playwright.sync_api import sync_playwright
 from src.config import (
     URL_ALVO,
-    SELETOR_DATA,
     DATA_ALVO,
+    CINEMA_ALVO,
     INTERVALO_MINUTOS,
-    SESSION_DIR
+    SESSION_DIR,
+    obter_url_com_data,
+    formatar_data_yyyy_mm_dd
 )
 from src.notifier import enviar_notificacao, enviar_notificacao_pushover
 
+def tentar_fechar_cookies(page):
+    """Tenta clicar no botão de aceitar cookies se estiver presente na tela."""
+    try:
+        btn_cookie = page.locator("button:has-text('Concordar e fechar'), button:has-text('Aceitar')")
+        if btn_cookie.count() > 0 and btn_cookie.first.is_visible():
+            btn_cookie.first.click(force=True)
+            page.wait_for_timeout(1000)
+            print("🍪 Modal de cookies fechado com sucesso.")
+    except Exception:
+        pass
+
+def garantir_selecao_cinema(page):
+    """Verifica se há solicitação para selecionar localidade e seleciona o CINEMA_ALVO."""
+    try:
+        sel_local = page.locator("text=POR FAVOR, SELECIONE UMA LOCALIDADE").first
+        if sel_local.count() > 0 and sel_local.is_visible():
+            print(f"📍 Selecionando cinema alvo '{CINEMA_ALVO}'...")
+            sel_local.click(force=True)
+            page.wait_for_timeout(1500)
+            
+            # Clica na opção do cinema (ex: Cinépolis JK Iguatemi (SP))
+            op_cinema = page.locator(f"text={CINEMA_ALVO}").first
+            if op_cinema.count() > 0 and op_cinema.is_visible():
+                op_cinema.click(force=True)
+                page.wait_for_timeout(3000)
+                print(f"✅ Cinema '{CINEMA_ALVO}' selecionado com sucesso!")
+            else:
+                # Tenta variação caso o nome configurado seja abreviado
+                op_alt = page.locator("text=JK Iguatemi").first
+                if op_alt.count() > 0 and op_alt.is_visible():
+                    op_alt.click(force=True)
+                    page.wait_for_timeout(3000)
+                    print("✅ Cinema 'JK Iguatemi' selecionado!")
+    except Exception as e:
+        print(f"⚠️ Erro ao tentar selecionar o cinema: {e}")
+
 def verificar_e_monitorar(headless=True):
-    """Roda a verificação periódica de datas no modo Headless/Visible."""
+    """Roda a verificação periódica acessando a URL com o parâmetro date=?YYYY-MM-DD,
+    garantindo a seleção do cinema e executando reload no navegador a cada ciclo.
+    """
+    data_formatada = formatar_data_yyyy_mm_dd(DATA_ALVO)
+    url_com_data = obter_url_com_data(URL_ALVO, DATA_ALVO)
+    
     print(f"🚀 Iniciando monitoramento periódico a cada {INTERVALO_MINUTOS} minutos...")
-    print(f"URL Alvo: {URL_ALVO}")
-    print(f"Data Alvo procurada: {DATA_ALVO}")
+    print(f"URL Alvo com parâmetro: {url_com_data}")
+    print(f"Cinema Alvo: {CINEMA_ALVO}")
+    print(f"Data Alvo procurada: {data_formatada}")
     print(f"Modo de Execução: {'Visível' if not headless else 'Oculto (Headless)'}")
     
     alerta_enviado = False
@@ -33,19 +77,29 @@ def verificar_e_monitorar(headless=True):
             ]
         )
         
+        page = None
+        
         try:
             while True:
-                print(f"\n[{time.strftime('%Y-%m-%d %H:%M:%S')}] Checando página de ingressos...")
-                page = context.new_page()
+                timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
+                print(f"\n[{timestamp}] Checando sessões para {CINEMA_ALVO} na data {data_formatada}...")
                 
                 try:
-                    response = page.goto(URL_ALVO, timeout=60000)
+                    if page is None or page.is_closed():
+                        print(f"🌐 Navegando para: {url_com_data}")
+                        page = context.new_page()
+                        response = page.goto(url_com_data, timeout=60000, wait_until="domcontentloaded")
+                    else:
+                        print("🔄 Recarregando a página no navegador (Reload)...")
+                        response = page.reload(timeout=60000, wait_until="domcontentloaded")
+                        
                     if response is None or not response.ok:
                         status = response.status if response else "Sem Resposta/Timeout"
                         raise Exception(f"O site retornou código de erro HTTP {status}")
                         
-                    page.wait_for_load_state("domcontentloaded")
                     page.wait_for_timeout(3000)
+                    tentar_fechar_cookies(page)
+                    garantir_selecao_cinema(page)
                     
                     if site_indisponivel:
                         print("🎉 O site voltou a ficar disponível!")
@@ -57,84 +111,38 @@ def verificar_e_monitorar(headless=True):
                         )
                         site_indisponivel = False
                     
-                    SETA_NEXT = ".css-1d7lels"
+                    # Análise do conteúdo da página
+                    body_text = page.inner_text("body")
                     
-                    datas_encontradas = set()
-                    historico_paginas = []
+                    # Busca por horários de exibição (ex: 14:30, 18:15, 22:00)
+                    horarios_encontrados = re.findall(r'\b(?:[01]?\d|2[0-3]):[0-5]\d\b', body_text)
+                    horarios_validos = sorted(list(set([h for h in horarios_encontrados if h != "00:00"])))
                     
-                    while True:
-                        datas_visiveis = []
-                        elementos_datas = page.locator(SELETOR_DATA)
-                        total_elementos = elementos_datas.count()
-                        
-                        for i in range(total_elementos):
-                            el = elementos_datas.nth(i)
-                            if el.is_visible():
-                                texto = el.inner_text().strip().replace('\n', ' ')
-                                if texto:
-                                    datas_visiveis.append(texto)
-                                    
-                        if not datas_visiveis:
-                            print("Nenhuma data visível encontrada neste slide.")
-                            break
+                    tem_aviso_sem_sessao = ("não há sessões" in body_text.lower() or 
+                                           "nao ha sessoes" in body_text.lower() or 
+                                           "nenhuma sessão" in body_text.lower() or
+                                           "selecione um cinema para ver as sessões" in body_text.lower())
+                    
+                    tem_sessao_disponivel = len(horarios_validos) > 0 and not tem_aviso_sem_sessao
+                    
+                    if tem_sessao_disponivel:
+                        print(f"🎯 SUCESSO: Foram encontradas sessões disponíveis no {CINEMA_ALVO} para {data_formatada}!")
+                        print(f"🕒 Horários disponíveis encontrados: {', '.join(horarios_validos)}")
                             
-                        print(f"Slide atual - datas visíveis: {datas_visiveis}")
-                        
-                        datas_encontradas.update(datas_visiveis)
-                        
-                        estado_atual = tuple(datas_visiveis)
-                        if estado_atual in historico_paginas:
-                            print("🔄 O calendário retornou ao início ou travou. Finalizando varredura das setas.")
-                            break
-                        historico_paginas.append(estado_atual)
-                        
-                        seta = page.locator(SETA_NEXT)
-                        if seta.count() == 0 or not seta.is_visible():
-                            print("Seta para a direita não encontrada ou invisível. Fim do calendário.")
-                            break
-                            
-                        aria_disabled = seta.get_attribute("aria-disabled")
-                        if aria_disabled == "true":
-                            print("Seta para a direita está desativada (aria-disabled='true'). Fim do calendário.")
-                            break
-                            
-                        try:
-                            seta.click(force=True)
-                            page.wait_for_timeout(1000)
-                        except Exception as click_err:
-                            print(f"Não foi possível clicar na seta: {click_err}")
-                            break
-                    
-                    datas_encontradas_lista = sorted(list(datas_encontradas))
-                    print(f"📅 Total de dias mapeados no calendário completo: {datas_encontradas_lista}")
-                    
-                    dia_alvo_str = DATA_ALVO.split("/")[0].strip() if "/" in DATA_ALVO else DATA_ALVO.strip()
-                    dia_alvo = str(int(dia_alvo_str))
-                    
-                    data_disponivel = False
-                    for data_detectada in datas_encontradas:
-                        match = re.search(r'\d+', data_detectada)
-                        numeros_data = match.group() if match else ""
-                        if dia_alvo == numeros_data:
-                            data_disponivel = True
-                            break
-                    
-                    if data_disponivel:
-                        print(f"🎯 SUCESSO: A data desejada ({DATA_ALVO}) está disponível!")
                         if not alerta_enviado:
-                            resend_ok = enviar_notificacao(DATA_ALVO, datas_encontradas_lista)
+                            resend_ok = enviar_notificacao(data_formatada, horarios_validos)
                             pushover_ok = enviar_notificacao_pushover(
-                                titulo="🚨 INGRESSOS DISPONÍVEIS!",
-                                mensagem=f"A data desejada {DATA_ALVO} está aberta para compras no site!",
+                                titulo=f"🚨 SESSÃO DISPONÍVEL NO {CINEMA_ALVO}!",
+                                mensagem=f"Sessões encontradas ({', '.join(horarios_validos)}) para {data_formatada}! Acesse: {url_com_data}",
                                 priority=2
                             )
                             alerta_enviado = resend_ok or pushover_ok
                     else:
-                        print(f"ℹ️ A data desejada ({DATA_ALVO}) ainda não está disponível.")
-                        
+                        print(f"ℹ️ Data ({data_formatada}) no {CINEMA_ALVO} verificada, porém ainda NÃO há sessões disponíveis no momento.")
+                            
                 except Exception as e:
                     erro_msg = str(e)
-                    print(f"❌ Erro durante a varredura da página: {erro_msg}")
+                    print(f"❌ Erro durante a verificação da página: {erro_msg}")
                     
                     if not site_indisponivel:
                         enviar_notificacao_pushover(
@@ -144,13 +152,13 @@ def verificar_e_monitorar(headless=True):
                             sound="falling"
                         )
                         site_indisponivel = True
-                finally:
-                    page.close()
                 
-                print(f"Aguardando {INTERVALO_MINUTOS} minutos para a próxima verificação...")
+                print(f"Aguardando {INTERVALO_MINUTOS} minutos para o próximo reload...")
                 time.sleep(INTERVALO_MINUTOS * 60)
                 
         except KeyboardInterrupt:
             print("\n👋 Monitoramento interrompido pelo usuário.")
         finally:
+            if page and not page.is_closed():
+                page.close()
             context.close()
