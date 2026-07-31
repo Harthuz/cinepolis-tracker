@@ -1,4 +1,5 @@
 import time
+import os
 import re
 from playwright.sync_api import sync_playwright
 from src.config import (
@@ -19,16 +20,22 @@ def tentar_fechar_cookies(page):
         if btn_cookie.count() > 0 and btn_cookie.first.is_visible():
             btn_cookie.first.click(force=True)
             page.wait_for_timeout(1000)
-            print("🍪 Modal de cookies fechado com sucesso.")
+            print("🍪 [DEBUG] Modal de cookies fechado com sucesso.")
     except Exception:
         pass
 
 def garantir_selecao_cinema(page):
     """Verifica se há solicitação para selecionar localidade e seleciona o CINEMA_ALVO."""
     try:
+        # Checa se o cinema já está selecionado
+        body_text = page.inner_text("body")
+        if CINEMA_ALVO.lower() in body_text.lower():
+            print(f"📍 [DEBUG] Cinema '{CINEMA_ALVO}' já está ativo na página.")
+            return
+
         sel_local = page.locator("text=POR FAVOR, SELECIONE UMA LOCALIDADE").first
         if sel_local.count() > 0 and sel_local.is_visible():
-            print(f"📍 Selecionando cinema alvo '{CINEMA_ALVO}'...")
+            print(f"📍 [DEBUG] Selecionando cinema alvo '{CINEMA_ALVO}'...")
             sel_local.click(force=True)
             page.wait_for_timeout(1500)
             
@@ -37,16 +44,39 @@ def garantir_selecao_cinema(page):
             if op_cinema.count() > 0 and op_cinema.is_visible():
                 op_cinema.click(force=True)
                 page.wait_for_timeout(3000)
-                print(f"✅ Cinema '{CINEMA_ALVO}' selecionado com sucesso!")
+                print(f"✅ [DEBUG] Cinema '{CINEMA_ALVO}' selecionado com sucesso!")
             else:
-                # Tenta variação caso o nome configurado seja abreviado
                 op_alt = page.locator("text=JK Iguatemi").first
                 if op_alt.count() > 0 and op_alt.is_visible():
                     op_alt.click(force=True)
                     page.wait_for_timeout(3000)
-                    print("✅ Cinema 'JK Iguatemi' selecionado!")
+                    print("✅ [DEBUG] Cinema 'JK Iguatemi' selecionado!")
     except Exception as e:
-        print(f"⚠️ Erro ao tentar selecionar o cinema: {e}")
+        print(f"⚠️ [DEBUG] Erro ao tentar selecionar o cinema: {e}")
+
+def garantir_selecao_data(page, data_str):
+    """Tenta localizar e clicar no dia correspondente no carrossel de datas para expandir as sessões."""
+    try:
+        # Extrai o dia (ex: "12" de "2026-08-12" ou "12/08/2026")
+        match = re.search(r'\b(\d{1,2})\b', data_str)
+        dia_alvo = str(int(match.group(1))) if match else ""
+        
+        if not dia_alvo:
+            return
+
+        # Procura botões/elementos do carrossel que contenham o dia alvo
+        dias_el = page.locator(f"text={dia_alvo}")
+        for i in range(dias_el.count()):
+            el = dias_el.nth(i)
+            if el.is_visible():
+                txt = el.inner_text().strip()
+                if txt == dia_alvo:
+                    print(f"📅 [DEBUG] Clicando no dia {dia_alvo} no carrossel de datas...")
+                    el.click(force=True)
+                    page.wait_for_timeout(2000)
+                    break
+    except Exception as e:
+        print(f"⚠️ [DEBUG] Erro ao selecionar o dia no carrossel: {e}")
 
 def verificar_e_monitorar(headless=True):
     """Roda a verificação periódica acessando a URL com o parâmetro date=?YYYY-MM-DD,
@@ -64,10 +94,13 @@ def verificar_e_monitorar(headless=True):
     alerta_enviado = False
     site_indisponivel = False
     
+    os.makedirs(SESSION_DIR, exist_ok=True)
+    
     with sync_playwright() as p:
         context = p.chromium.launch_persistent_context(
             user_data_dir=SESSION_DIR,
             headless=headless,
+            viewport={'width': 1280, 'height': 800},
             user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
             ignore_default_args=["--enable-automation"],
             args=[
@@ -100,6 +133,7 @@ def verificar_e_monitorar(headless=True):
                     page.wait_for_timeout(3000)
                     tentar_fechar_cookies(page)
                     garantir_selecao_cinema(page)
+                    garantir_selecao_data(page, data_formatada)
                     
                     if site_indisponivel:
                         print("🎉 O site voltou a ficar disponível!")
@@ -111,12 +145,29 @@ def verificar_e_monitorar(headless=True):
                         )
                         site_indisponivel = False
                     
+                    # Salva screenshot para debug visual no container/máquina
+                    screenshot_path = os.path.join(SESSION_DIR, "debug_last.png")
+                    try:
+                        page.screenshot(path=screenshot_path)
+                        print(f"📸 [DEBUG] Screenshot salvo em: {screenshot_path}")
+                    except Exception:
+                        pass
+
                     # Análise do conteúdo da página
                     body_text = page.inner_text("body")
+                    lines = [line.strip() for line in body_text.split('\n') if line.strip()]
+                    
+                    print("\n--- [DEBUG LOG] AMATRA DE CONTEÚDO CAPTURADO DA PÁGINA ---")
+                    for l in lines:
+                        if any(k in l.lower() for k in ['cinema', 'legendado', 'dublado', 'sess', 'quarta', '12', '14:', '18:', '22:', 'horário']):
+                            print("  [PAGE LOG] >", l[:120])
+                    print("--- [DEBUG LOG] FIM DA AMOSTRA ---\n")
                     
                     # Busca por horários de exibição (ex: 14:30, 18:15, 22:00)
                     horarios_encontrados = re.findall(r'\b(?:[01]?\d|2[0-3]):[0-5]\d\b', body_text)
                     horarios_validos = sorted(list(set([h for h in horarios_encontrados if h != "00:00"])))
+                    
+                    print(f"🔎 [DEBUG] Horários potenciais detectados: {horarios_validos}")
                     
                     tem_aviso_sem_sessao = ("não há sessões" in body_text.lower() or 
                                            "nao ha sessoes" in body_text.lower() or 
