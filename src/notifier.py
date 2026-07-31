@@ -15,9 +15,8 @@ if RESEND_API_KEY:
     resend.api_key = RESEND_API_KEY
 
 def enviar_notificacao(data_desejada, datas_disponiveis):
-    """Envia um e-mail de alerta utilizando o Resend."""
+    """Envia um e-mail de alerta utilizando o Resend (desativado por padrão a menos que a API Key e e-mail sejam configurados)."""
     if not RESEND_API_KEY or not EMAIL_DESTINO:
-        print("⚠️ Configurações do Resend ou E-mail de destino ausentes. Não foi possível enviar notificação por e-mail.")
         return False
     
     try:

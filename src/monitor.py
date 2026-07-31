@@ -172,8 +172,10 @@ def verificar_e_monitorar(headless=True):
                                 mensagem=f"Sessões encontradas ({', '.join(horarios_validos)}) para {data_formatada}! Acesse: {url_com_data}",
                                 priority=2
                             )
-                            resend_ok = enviar_notificacao(data_formatada, horarios_validos)
-                            alerta_enviado = pushover_ok or resend_ok
+                            # Chama o Resend apenas se a chave estiver configurada
+                            if RESEND_API_KEY and EMAIL_DESTINO:
+                                enviar_notificacao(data_formatada, horarios_validos)
+                            alerta_enviado = pushover_ok
                     else:
                         if "sorry, you have been blocked" in body_text.lower() or "cloudflare" in body_text.lower():
                             print("⚠️ [CLOUDFLARE] O acesso foi retido pela tela de segurança do Cloudflare. Recarregando no próximo ciclo...")
