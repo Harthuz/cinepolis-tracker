@@ -1,0 +1,12 @@
+.env
+session/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.png
+*.html
+*.log
+estrutura_pagina.txt
+pagina_completa.html
+scratch/
