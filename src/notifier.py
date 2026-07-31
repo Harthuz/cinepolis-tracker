@@ -3,6 +3,7 @@ import urllib.parse
 import resend
 from src.config import (
     URL_ALVO,
+    ENABLE_RESEND,
     RESEND_API_KEY,
     EMAIL_REMETENTE,
     EMAIL_DESTINO,
@@ -15,8 +16,8 @@ if RESEND_API_KEY:
     resend.api_key = RESEND_API_KEY
 
 def enviar_notificacao(data_desejada, datas_disponiveis):
-    """Envia um e-mail de alerta utilizando o Resend (desativado por padrão a menos que a API Key e e-mail sejam configurados)."""
-    if not RESEND_API_KEY or not EMAIL_DESTINO:
+    """Envia um e-mail de alerta utilizando o Resend (desativado por padrão a menos que ENABLE_RESEND=true)."""
+    if not ENABLE_RESEND or not RESEND_API_KEY or not EMAIL_DESTINO:
         return False
     
     try:

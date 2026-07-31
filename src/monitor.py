@@ -8,6 +8,7 @@ from src.config import (
     CINEMA_ALVO,
     INTERVALO_MINUTOS,
     SESSION_DIR,
+    ENABLE_RESEND,
     RESEND_API_KEY,
     EMAIL_DESTINO,
     obter_url_com_data,
@@ -185,7 +186,8 @@ def verificar_e_monitorar(headless=True):
                                 mensagem=f"Sessões encontradas ({', '.join(horarios_validos)}) para {data_formatada}! Acesse: {url_com_data}",
                                 priority=2
                             )
-                            if RESEND_API_KEY and EMAIL_DESTINO:
+                            # Chama o Resend apenas se estiver explicitamente ativado no .env
+                            if ENABLE_RESEND and RESEND_API_KEY and EMAIL_DESTINO:
                                 enviar_notificacao(data_formatada, horarios_validos)
                             alerta_enviado = pushover_ok
                     else:

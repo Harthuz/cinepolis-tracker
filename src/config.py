@@ -13,6 +13,7 @@ INTERVALO_MINUTOS = int(os.getenv("INTERVALO_MINUTOS", "5"))
 SESSION_DIR = os.getenv("SESSION_DIR", "./session")
 
 # Configurações do Resend
+ENABLE_RESEND = os.getenv("ENABLE_RESEND", "false").lower() in ["true", "1", "yes"]
 RESEND_API_KEY = os.getenv("RESEND_API_KEY", "")
 EMAIL_REMETENTE = os.getenv("EMAIL_REMETENTE", "onboarding@resend.dev")
 EMAIL_DESTINO = os.getenv("EMAIL_DESTINO", "")
