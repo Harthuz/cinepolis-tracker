@@ -145,13 +145,13 @@ def verificar_e_monitorar(headless=True):
                         print(f"🕒 Horários encontrados: {', '.join(horarios_validos)}")
                             
                         if not alerta_enviado:
-                            resend_ok = enviar_notificacao(data_formatada, horarios_validos)
                             pushover_ok = enviar_notificacao_pushover(
                                 titulo=f"🚨 SESSÃO DISPONÍVEL NO {CINEMA_ALVO}!",
                                 mensagem=f"Sessões encontradas ({', '.join(horarios_validos)}) para {data_formatada}! Acesse: {url_com_data}",
                                 priority=2
                             )
-                            alerta_enviado = resend_ok or pushover_ok
+                            resend_ok = enviar_notificacao(data_formatada, horarios_validos)
+                            alerta_enviado = pushover_ok or resend_ok
                     else:
                         if "selecione um cinema para ver as sessões" in body_text.lower():
                             print(f"ℹ️ A URL foi carregada, porém aguarda a seleção da localidade na sessão.")
