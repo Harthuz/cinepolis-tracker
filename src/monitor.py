@@ -25,32 +25,48 @@ def tentar_fechar_cookies(page):
         pass
 
 def garantir_selecao_cinema(page):
-    """Verifica se a localidade precisa ser definida na página e seleciona o CINEMA_ALVO."""
+    """Garante que a localidade e o cinema alvo estejam selecionados e ativos na página."""
     try:
         body_text = page.inner_text("body")
-        if CINEMA_ALVO.lower() in body_text.lower():
-            print(f"📍 [DEBUG] Cinema '{CINEMA_ALVO}' já está ativo na página.")
-            return
+        
+        # Se o cinema alvo já está ativo e a mensagem de escolher localidade não existe mais
+        if CINEMA_ALVO.lower() in body_text.lower() and "selecione um cinema para ver as sessões" not in body_text.lower():
+            print(f"📍 [DEBUG] Cinema '{CINEMA_ALVO}' já está ativado e confirmado na página.")
+            return True
 
-        sel_local = page.locator("text=POR FAVOR, SELECIONE UMA LOCALIDADE").first
+        print(f"📍 [DEBUG] Aplicando a seleção da localidade para '{CINEMA_ALVO}'...")
+        
+        # Procura o botão para abrir a seleção de localidade
+        sel_local = page.locator("text=POR FAVOR, SELECIONE UMA LOCALIDADE, text=SELECIONE UMA LOCALIDADE, text=SEU CINEMA").first
         if sel_local.count() > 0 and sel_local.is_visible():
-            print(f"📍 [DEBUG] Selecionando cinema alvo '{CINEMA_ALVO}'...")
             sel_local.click(force=True)
             page.wait_for_timeout(1500)
             
-            op_cinema = page.locator(f"text={CINEMA_ALVO}").first
+            # Se o campo de busca estiver visível, digita "JK Iguatemi" para filtrar
+            input_search = page.locator("input[placeholder='Pesquisa'], input.css-10alliu").first
+            if input_search.count() > 0 and input_search.is_visible():
+                input_search.fill("JK Iguatemi")
+                page.wait_for_timeout(1000)
+                
+            # Clica no item correspondente ao cinema na lista
+            op_cinema = page.locator("text=Cinépolis JK Iguatemi (SP), text=JK Iguatemi, text=Cinépolis JK Iguatemi").first
             if op_cinema.count() > 0 and op_cinema.is_visible():
                 op_cinema.click(force=True)
-                page.wait_for_timeout(3000)
-                print(f"✅ [DEBUG] Cinema '{CINEMA_ALVO}' selecionado!")
-            else:
-                op_alt = page.locator("text=JK Iguatemi").first
-                if op_alt.count() > 0 and op_alt.is_visible():
-                    op_alt.click(force=True)
-                    page.wait_for_timeout(3000)
-                    print("✅ [DEBUG] Cinema 'JK Iguatemi' selecionado!")
+                page.wait_for_timeout(4000)
+                print(f"✅ [DEBUG] Clique em '{CINEMA_ALVO}' efetuado!")
+                
+        # Confirmação pós-seleção
+        body_after = page.inner_text("body")
+        if CINEMA_ALVO.lower() in body_after.lower() and "selecione um cinema para ver as sessões" not in body_after.lower():
+            print(f"✅ [DEBUG] Sucesso: Localidade '{CINEMA_ALVO}' ativada na página!")
+            return True
+        else:
+            print(f"⚠️ [DEBUG] Atenção: A seleção de '{CINEMA_ALVO}' foi tentada, aguardando carregamento dos componentes.")
+            return False
+
     except Exception as e:
-        print(f"⚠️ [DEBUG] Erro ao selecionar cinema: {e}")
+        print(f"⚠️ [DEBUG] Erro ao verificar/selecionar localidade: {e}")
+        return False
 
 def verificar_e_monitorar(headless=True):
     """Roda o monitoramento periódico acessando exclusivamente a URL parametrizada por data (?date=YYYY-MM-DD)
@@ -154,7 +170,7 @@ def verificar_e_monitorar(headless=True):
                             alerta_enviado = pushover_ok or resend_ok
                     else:
                         if "selecione um cinema para ver as sessões" in body_text.lower():
-                            print(f"ℹ️ A URL foi carregada, porém aguarda a seleção da localidade na sessão.")
+                            print(f"ℹ️ A URL foi carregada, porém a localidade ainda aguarda confirmação de carregamento.")
                         else:
                             print(f"ℹ️ Data ({data_formatada}) acessada via URL no {CINEMA_ALVO}, porém ainda NÃO há sessões disponíveis.")
                             
